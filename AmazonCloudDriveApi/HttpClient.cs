@@ -314,6 +314,80 @@ namespace Azi.Tools
         }
 
         /// <summary>
+        /// TODO
+        /// </summary>
+        /// <param name="source"></param>
+        /// <param name="destination"></param>
+        /// <param name="bufferSize"></param>
+        /// <returns></returns>
+        public async Task CopyToStreamAsync(Stream source, Stream destination, int bufferSize, CancellationToken token)
+        {
+            if (source == null)
+                throw new ArgumentNullException("source");
+
+            if (destination == null)
+
+                throw new ArgumentNullException("destination");
+
+            if (bufferSize <= 0)
+
+                throw new ArgumentOutOfRangeException("bufferSize", "bufferSize must be greater than zero");
+
+            /* The source stream may not support seeking; e.g. a stream
+
+             * returned by ZipArchiveEntry.Open() or a network stream. */
+            var size = bufferSize;
+            var canSeek = source.CanSeek;
+
+            if (canSeek)
+            {
+                try
+                {
+                    size = Convert.ToInt32(Math.Min(bufferSize, source.Length));
+                }
+                catch (NotSupportedException) { canSeek = false; }
+            }
+
+            var buffer = new byte[size];
+
+            var remaining = canSeek ? source.Length : 0;
+
+            /* If the stream is seekable, seek through it until all bytes are read.
+
+             * If we read less than the expected number of bytes, it indicates an
+             * error, so throw the appropriate exception.
+             *
+             * If the stream is not seekable, loop until we read 0 bytes. (It’s not
+             * an error in this case.) */
+            while (!canSeek || remaining > 0)
+            {
+                if (token.IsCancellationRequested)
+                {
+                    break;
+                }
+                var read = await source.ReadAsync(buffer, 0, size);
+
+                if (read <= 0)
+                {
+                    if (canSeek)
+                    {
+                        throw new EndOfStreamException(
+                            string.Format("End of stream reached, but {0} remained to be read.", remaining));
+                              //FileUtils.FormatBytes(remaining)));
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                await destination.WriteAsync(buffer, 0, read);
+
+                remaining -= canSeek ? read : 0;
+            }
+        }
+
+        /// <summary>
         /// Uploads file
         /// </summary>
         /// <typeparam name="R">Result type</typeparam>
@@ -347,9 +421,17 @@ namespace Azi.Tools
                                 if (file.CancellationToken != null)
                                 {
                                     var token = (CancellationToken)file.CancellationToken;
-                                    await pre.CopyToAsync(output, 81920, token).ConfigureAwait(false);
-                                    await input.CopyToAsync(output, 81920, token).ConfigureAwait(false);
-                                    await post.CopyToAsync(output, 81920, token).ConfigureAwait(false);
+                                    await pre.CopyToAsync(output, 81920).ConfigureAwait(false);
+                                    //await input.CopyToAsync(output, 81920).ConfigureAwait(false);
+                                    await CopyToStreamAsync(input, output, 81920, token).ConfigureAwait(false);
+                                    if (token.IsCancellationRequested)
+                                    {
+                                        //output.Close();
+                                        //output.Dispose();
+                                        client.Abort();
+                                        throw new OperationCanceledException(token);
+                                    }
+                                    await post.CopyToAsync(output, 81920).ConfigureAwait(false);
                                 }
                                 else {
                                     await pre.CopyToAsync(output).ConfigureAwait(false);
