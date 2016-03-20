@@ -86,6 +86,7 @@ namespace Azi.Amazon.CloudDrive
                 FileName = fileUpload.FileName,
                 FormName = "content",
                 CancellationToken = fileUpload.CancellationToken,
+                Progress = fileUpload.Progress,
                 Parameters = new Dictionary<string, string>
                     {
                         { "metadata", meta }

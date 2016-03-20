@@ -320,7 +320,7 @@ namespace Azi.Tools
         /// <param name="destination"></param>
         /// <param name="bufferSize"></param>
         /// <returns></returns>
-        public async Task CopyToStreamAsync(Stream source, Stream destination, int bufferSize, CancellationToken token)
+        public async Task CopyToStreamAsync(Stream source, Stream destination, int bufferSize, CancellationToken token, Func<long, long> progress = null)
         {
             if (source == null)
                 throw new ArgumentNullException("source");
@@ -351,6 +351,12 @@ namespace Azi.Tools
             var buffer = new byte[size];
 
             var remaining = canSeek ? source.Length : 0;
+            var total = remaining;
+
+            if (canSeek && progress != null)
+            {
+                progress.Invoke(0);
+            }
 
             /* If the stream is seekable, seek through it until all bytes are read.
 
@@ -365,6 +371,7 @@ namespace Azi.Tools
                 {
                     break;
                 }
+
                 var read = await source.ReadAsync(buffer, 0, size);
 
                 if (read <= 0)
@@ -384,6 +391,11 @@ namespace Azi.Tools
                 await destination.WriteAsync(buffer, 0, read);
 
                 remaining -= canSeek ? read : 0;
+
+                if (canSeek && progress != null)
+                {
+                    progress.Invoke(total - remaining);
+                }
             }
         }
 
@@ -423,11 +435,9 @@ namespace Azi.Tools
                                     var token = (CancellationToken)file.CancellationToken;
                                     await pre.CopyToAsync(output, 81920).ConfigureAwait(false);
                                     //await input.CopyToAsync(output, 81920).ConfigureAwait(false);
-                                    await CopyToStreamAsync(input, output, 81920, token).ConfigureAwait(false);
+                                    await CopyToStreamAsync(input, output, 81920, token, file.Progress).ConfigureAwait(false);
                                     if (token.IsCancellationRequested)
                                     {
-                                        //output.Close();
-                                        //output.Dispose();
                                         client.Abort();
                                         throw new OperationCanceledException(token);
                                     }

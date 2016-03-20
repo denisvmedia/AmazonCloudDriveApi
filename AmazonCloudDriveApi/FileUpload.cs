@@ -38,5 +38,10 @@ namespace Azi.Amazon.CloudDrive
         /// If it's False and file MD5 is the same as some other file in the cloud then HTTP error Conflict will be thrown
         /// </summary>
         public bool AllowDuplicate { get; set; }
+
+        /// <summary>
+        /// Gets or sets progress func.
+        /// </summary>
+        public Func<long, long> Progress { get; set; } = null;
     }
 }

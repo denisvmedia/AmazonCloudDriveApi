@@ -38,5 +38,10 @@ namespace Azi.Tools
         /// Gets or sets upload Cancellation Token
         /// </summary>
         public CancellationToken? CancellationToken { get; set; } = null;
+
+        /// <summary>
+        /// Gets or sets progress func.
+        /// </summary>
+        public Func<long, long> Progress { get; set; } = null;
     }
 }
