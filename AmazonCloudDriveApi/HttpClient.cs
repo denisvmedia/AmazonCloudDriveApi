@@ -624,7 +624,7 @@ namespace Azi.Tools
                         }
                     }
 
-                    throw new HttpWebException(webex.Message, webresp.StatusCode);
+                    throw new HttpWebException(webex.Message, webresp.StatusCode, webex);
                 }
             }
 
