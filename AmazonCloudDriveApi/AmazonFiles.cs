@@ -45,13 +45,25 @@ namespace Azi.Amazon.CloudDrive
         /// <inheritdoc/>
         async Task<AmazonNode> IAmazonFiles.Overwrite(string id, Func<Stream> streamCreator, CancellationToken? token)
         {
-            var url = string.Format("{0}nodes/{1}/content", await GetContentUrl().ConfigureAwait(false), id);
-            var file = new SendFileInfo
+            return await ((IAmazonFiles)this).Overwrite(new FileUpload
             {
                 StreamOpener = streamCreator,
                 FileName = id,
+                CancellationToken = (CancellationToken)token,
+            });
+        }
+
+        /// <inheritdoc/>
+        async Task<AmazonNode> IAmazonFiles.Overwrite(FileUpload fileUpload)
+        {
+            var url = string.Format("{0}nodes/{1}/content", await GetContentUrl().ConfigureAwait(false), fileUpload.FileName);
+            var file = new SendFileInfo
+            {
+                StreamOpener = fileUpload.StreamOpener,
+                FileName = fileUpload.FileName,
                 FormName = "content",
-                CancellationToken = token
+                CancellationToken = fileUpload.CancellationToken,
+                Progress = fileUpload.Progress,
             };
             return await http.SendFile<AmazonNode>(HttpMethod.Put, url, file).ConfigureAwait(false);
         }
@@ -64,7 +76,7 @@ namespace Azi.Amazon.CloudDrive
                 ParentId = parentId,
                 AllowDuplicate = allowDuplicate,
                 FileName = fileName,
-                StreamOpener = streamOpener
+                StreamOpener = streamOpener,
             });
         }
 

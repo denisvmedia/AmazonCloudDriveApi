@@ -59,6 +59,13 @@ namespace Azi.Amazon.CloudDrive
         Task<AmazonNode> Overwrite(string id, Func<Stream> streamCreator, CancellationToken? token = null);
 
         /// <summary>
+        /// Overwrite file by id and stream
+        /// </summary>
+        /// <param name="fileUpload">Information about new file</param>
+        /// <returns>Node info for overwritten file</returns>
+        Task<AmazonNode> Overwrite(FileUpload fileUpload);
+
+        /// <summary>
         /// Upload file to folder.
         /// </summary>
         /// <param name="parentId">Folder id for new file</param>

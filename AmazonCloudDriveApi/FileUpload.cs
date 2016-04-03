@@ -14,12 +14,12 @@ namespace Azi.Amazon.CloudDrive
     public class FileUpload
     {
         /// <summary>
-        /// Gets or sets folder Id to place new file into.
+        /// Gets or sets folder Id to place new file into (ignored in UploadNew)
         /// </summary>
         public string ParentId { get; set; }
 
         /// <summary>
-        /// Gets or sets file name
+        /// Gets or sets file name (in case of overwrite it MUST be id)
         /// </summary>
         public string FileName { get; set; }
 
@@ -34,7 +34,7 @@ namespace Azi.Amazon.CloudDrive
         public CancellationToken CancellationToken { get; set; }
 
         /// <summary>
-        /// Gets or sets flag to allow duplicate uploads.
+        /// Gets or sets flag to allow duplicate uploads. (ignored in Overwrite)
         /// If it's False and file MD5 is the same as some other file in the cloud then HTTP error Conflict will be thrown
         /// </summary>
         public bool AllowDuplicate { get; set; }
