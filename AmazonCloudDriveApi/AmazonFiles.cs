@@ -2,19 +2,18 @@
 // Copyright (c) Rambalac. All rights reserved.
 // </copyright>
 
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Net;
-using System.Net.Http;
-using System.Threading.Tasks;
-using Azi.Amazon.CloudDrive.JsonObjects;
-using Azi.Tools;
-using Newtonsoft.Json;
-using System.Threading;
-
 namespace Azi.Amazon.CloudDrive
 {
+    using System;
+    using System.Collections.Generic;
+    using System.IO;
+    using System.Net;
+    using System.Net.Http;
+    using System.Threading;
+    using System.Threading.Tasks;
+    using JsonObjects;
+    using Newtonsoft.Json;
+    using Tools;
 
     /// <summary>
     /// Part to work with file upload and download
@@ -76,8 +75,8 @@ namespace Azi.Amazon.CloudDrive
                 ParentId = parentId,
                 AllowDuplicate = allowDuplicate,
                 FileName = fileName,
-                StreamOpener = streamOpener,
-            });
+                StreamOpener = streamOpener
+            }).ConfigureAwait(false);
         }
 
         /// <inheritdoc/>
@@ -98,6 +97,7 @@ namespace Azi.Amazon.CloudDrive
                 FileName = fileUpload.FileName,
                 FormName = "content",
                 CancellationToken = fileUpload.CancellationToken,
+                BufferSize = fileUpload.BufferSize,
                 Progress = fileUpload.Progress,
                 Parameters = new Dictionary<string, string>
                     {

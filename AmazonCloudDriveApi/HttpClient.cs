@@ -22,7 +22,7 @@ namespace Azi.Tools
         private const int RetryTimes = 100;
 
         private static readonly HashSet<HttpStatusCode> RetryCodes = new HashSet<HttpStatusCode> { HttpStatusCode.ProxyAuthenticationRequired };
-        private readonly Dictionary<HttpStatusCode, WeakReference<Func<HttpStatusCode, Task<bool>>>> retryErrorProcessor = new Dictionary<HttpStatusCode, WeakReference<Func<HttpStatusCode, Task<bool>>>>();
+        private readonly Dictionary<int, WeakReference<Func<HttpStatusCode, Task<bool>>>> retryErrorProcessor = new Dictionary<int, WeakReference<Func<HttpStatusCode, Task<bool>>>>();
         private readonly Func<HttpWebRequest, Task> settingsSetter;
 
         /// <summary>
@@ -41,8 +41,18 @@ namespace Azi.Tools
         /// Add Http error processor
         /// </summary>
         /// <param name="code">Http status</param>
-        /// <param name="func">func to return true if request should be retried</param>
+        /// <param name="func">func to return true if request should be retried. Func reference will be stored as WeakReference, so be careful with anonymous func.</param>
         public void AddRetryErrorProcessor(HttpStatusCode code, Func<HttpStatusCode, Task<bool>> func)
+        {
+            retryErrorProcessor[(int)code] = new WeakReference<Func<HttpStatusCode, Task<bool>>>(func);
+        }
+
+        /// <summary>
+        /// Add Http error processor
+        /// </summary>
+        /// <param name="code">Http status code</param>
+        /// <param name="func">func to return true if request should be retried</param>
+        public void AddRetryErrorProcessor(int code, Func<HttpStatusCode, Task<bool>> func)
         {
             retryErrorProcessor[code] = new WeakReference<Func<HttpStatusCode, Task<bool>>>(func);
         }
@@ -138,8 +148,7 @@ namespace Azi.Tools
                         {
                             client.AddRange((long)fileOffset, (long)(fileOffset + length - 1));
                         }
-                        else
-                            if (fileOffset != null && length == null)
+                        else if (fileOffset != null && length == null)
                         {
                             client.AddRange((long)fileOffset);
                         }
@@ -203,6 +212,15 @@ namespace Azi.Tools
         /// </summary>
         /// <param name="code">Http status</param>
         public void RemoveRetryErrorProcessor(HttpStatusCode code)
+        {
+            retryErrorProcessor.Remove((int)code);
+        }
+
+        /// <summary>
+        /// Removes Http error processor
+        /// </summary>
+        /// <param name="code">Http status code</param>
+        public void RemoveRetryErrorProcessor(int code)
         {
             retryErrorProcessor.Remove(code);
         }
@@ -610,13 +628,13 @@ namespace Azi.Tools
 
                     WeakReference<Func<HttpStatusCode, Task<bool>>> weakfunc;
                     Func<HttpStatusCode, Task<bool>> func;
-                    if (retryErrorProcessor.TryGetValue(webresp.StatusCode, out weakfunc))
+                    if (retryErrorProcessor.TryGetValue((int)webresp.StatusCode, out weakfunc))
                     {
                         if (weakfunc.TryGetTarget(out func))
                         {
                             if (func != null)
                             {
-                                if (await func(webresp.StatusCode))
+                                if (await func(webresp.StatusCode).ConfigureAwait(false))
                                 {
                                     return false;
                                 }
