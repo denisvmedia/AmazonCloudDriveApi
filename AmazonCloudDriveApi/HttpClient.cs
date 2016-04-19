@@ -423,7 +423,7 @@ namespace Azi.Tools
         /// <typeparam name="R">Result type</typeparam>
         /// <param name="method">HTTP method</param>
         /// <param name="url">URL for request</param>
-        /// <param name="file">File upload parameters</param>
+        /// <param name="file">File upload parameters. Input stream must support Length</param>
         /// <returns>Async result object</returns>
         public async Task<R> SendFile<R>(HttpMethod method, string url, SendFileInfo file)
         {
@@ -434,50 +434,58 @@ namespace Azi.Tools
                 async () =>
                     {
                         var client = await GetHttpClient(url).ConfigureAwait(false);
-                        client.Method = method.ToString();
-                        client.AllowWriteStreamBuffering = false;
-
-                        string boundry = Guid.NewGuid().ToString();
-                        client.ContentType = $"multipart/form-data; boundary={boundry}";
-                        client.SendChunked = true;
-
-                        using (var input = file.StreamOpener())
+                        try
                         {
-                            var pre = GetMultipartFormPre(file, input.Length, boundry);
-                            var post = GetMultipartFormPost(boundry);
-                            client.ContentLength = pre.Length + input.Length + post.Length;
-                            using (var output = await client.GetRequestStreamAsync().ConfigureAwait(false))
+                            client.Method = method.ToString();
+                            client.AllowWriteStreamBuffering = false;
+
+                            string boundry = Guid.NewGuid().ToString();
+                            client.ContentType = $"multipart/form-data; boundary={boundry}";
+                            client.SendChunked = true;
+
+                            using (var input = file.StreamOpener())
                             {
-                                if (file.CancellationToken != null)
+                                var pre = GetMultipartFormPre(file, input.Length, boundry);
+                                var post = GetMultipartFormPost(boundry);
+                                client.ContentLength = pre.Length + input.Length + post.Length;
+                                using (var output = await client.GetRequestStreamAsync().ConfigureAwait(false))
                                 {
-                                    var token = (CancellationToken)file.CancellationToken;
-                                    await pre.CopyToAsync(output, 81920).ConfigureAwait(false);
-                                    //await input.CopyToAsync(output, 81920).ConfigureAwait(false);
-                                    await CopyToStreamAsync(input, output, 81920, token, file.Progress).ConfigureAwait(false);
-                                    if (token.IsCancellationRequested)
+                                    if (file.CancellationToken != null)
                                     {
-                                        client.Abort();
-                                        throw new OperationCanceledException(token);
+                                        var token = (CancellationToken)file.CancellationToken;
+                                        await pre.CopyToAsync(output, 81920).ConfigureAwait(false);
+                                        //await input.CopyToAsync(output, 81920).ConfigureAwait(false);
+                                        await CopyToStreamAsync(input, output, 81920, token, file.Progress).ConfigureAwait(false);
+                                        if (token.IsCancellationRequested)
+                                        {
+                                            client.Abort();
+                                            throw new OperationCanceledException(token);
+                                        }
+                                        await post.CopyToAsync(output, 81920).ConfigureAwait(false);
                                     }
-                                    await post.CopyToAsync(output, 81920).ConfigureAwait(false);
-                                }
-                                else {
-                                    await pre.CopyToAsync(output).ConfigureAwait(false);
-                                    await input.CopyToAsync(output).ConfigureAwait(false);
-                                    await post.CopyToAsync(output).ConfigureAwait(false);
+                                    else {
+                                        await pre.CopyToAsync(output).ConfigureAwait(false);
+                                        await input.CopyToAsync(output).ConfigureAwait(false);
+                                        await post.CopyToAsync(output).ConfigureAwait(false);
+                                    }
                                 }
                             }
-                        }
-                        using (var response = (HttpWebResponse)await client.GetResponseAsync().ConfigureAwait(false))
-                        {
-                            if (!response.IsSuccessStatusCode())
+                            using (var response = (HttpWebResponse)await client.GetResponseAsync().ConfigureAwait(false))
                             {
-                                return await LogBadResponse(response).ConfigureAwait(false);
-                            }
+                                if (!response.IsSuccessStatusCode())
+                                {
+                                    return await LogBadResponse(response).ConfigureAwait(false);
+                                }
 
-                            result = await response.ReadAsAsync<R>().ConfigureAwait(false);
+                                result = await response.ReadAsAsync<R>().ConfigureAwait(false);
+                            }
+                            return true;
                         }
-                        return true;
+                        catch (Exception)
+                        {
+                            client.Abort();
+                            throw;
+                        }
                     },
                 GeneralExceptionProcessor).ConfigureAwait(false);
             return result;

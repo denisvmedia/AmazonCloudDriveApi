@@ -172,20 +172,11 @@ namespace Azi.Amazon.CloudDrive
             await http.Send<object>(HttpMethod.Put, url).ConfigureAwait(false);
         }
 
-        private static string MakeMD5Filter(string md5)
-        {
-            return "contentProperties.md5:" + md5;
-        }
+        private static string MakeMD5Filter(string md5) => "contentProperties.md5:" + md5;
 
-        private static string MakeNameFilter(string name)
-        {
-            return "name:" + FilterEscapeChars.Replace(name, "\\$0");
-        }
+        private static string MakeNameFilter(string name) => "name:" + Uri.EscapeDataString(FilterEscapeChars.Replace(name, "\\$0"));
 
-        private static string MakeParentFilter(string id)
-        {
-            return "parents:" + id;
-        }
+        private static string MakeParentFilter(string id) => "parents:" + id;
 
         private async Task<AmazonNode> GetRoot()
         {
